@@ -61,6 +61,7 @@ import com.android.systemui.dagger.qualifiers.Main;
 import com.android.systemui.statusbar.CommandQueue;
 import com.android.systemui.statusbar.CommandQueue.Callbacks;
 import com.android.systemui.statusbar.phone.NavigationBarFrame;
+import com.android.systemui.statusbar.phone.NavigationBarView;
 import com.android.systemui.statusbar.phone.StatusBar;
 import com.android.systemui.statusbar.policy.ConfigurationController;
 import com.android.systemui.statusbar.policy.PulseController;
@@ -228,6 +229,8 @@ public class PulseControllerImpl
 
         NavigationBarFrame nv = mStatusbar.getNavigationBarView() != null ?
                 mStatusbar.getNavigationBarView().getNavbarFrame() : null;
+        NavigationBarView nv = mStatusbar.getNavigationBarView() != null ?
+                mStatusbar.getNavigationBarView() : null;
         VisualizerView vv = mStatusbar.getLsVisualizer();
         boolean allowLsPulse = vv != null && vv.isAttached()
                 && mLsPulseEnabled && mKeyguardShowing && !mDozing;
@@ -270,22 +273,23 @@ public class PulseControllerImpl
         }
     }
 
+    private NavigationBarView getNavigationBarView() {
+        return mStatusbar != null ? mStatusbar.getNavigationBarView() : null;
+    }
+
     @Inject
     public PulseControllerImpl(Context context, @Main Handler mainHandler, @Background Executor backgroundExecutor) {
         mContext = context;
         mStatusbar = Dependency.get(StatusBar.class);
         mHandler = mainHandler;
-        mSettingsObserver = new SettingsObserver(mainHandler);
-        mSettingsObserver.updateSettings();
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         mMusicStreamMuted = isMusicMuted(AudioManager.STREAM_MUSIC);
         PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
         mPowerSaveModeEnabled = pm.isPowerSaveMode();
-        mSettingsObserver.register();
+
         mStreamHandler = new VisualizerStreamHandler(mContext, this, mStreamListener, backgroundExecutor);
         mPulseView = new PulseView(context, this);
         mColorController = new ColorController(mContext, mHandler);
-        loadRenderer();
         Dependency.get(CommandQueue.class).addCallback(this);
         IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
@@ -293,6 +297,10 @@ public class PulseControllerImpl
         filter.addAction(AudioManager.STREAM_MUTE_CHANGED_ACTION);
         filter.addAction(AudioManager.VOLUME_CHANGED_ACTION);
         context.registerReceiverAsUser(mBroadcastReceiver, UserHandle.ALL, filter, null, null);
+        mSettingsObserver = new SettingsObserver(mainHandler);
+        mSettingsObserver.register();
+        mSettingsObserver.updateSettings();
+        loadRenderer();
     }
 
     @Override
@@ -348,6 +356,8 @@ public class PulseControllerImpl
         final boolean isRendering = shouldDrawPulse();
         if (isRendering) {
             mStreamHandler.pause();
+        } else {
+            getNavigationBarView().hideHomeHandle(false);
         }
         if (mRenderer != null) {
             mRenderer.destroy();
@@ -469,6 +479,7 @@ public class PulseControllerImpl
                     mRenderer.onVisualizerLinkChanged(false);
                 }
                 mPulseView.postInvalidate();
+                getNavigationBarView().hideHomeHandle(false);
                 notifyStateListeners(false);
             }
         }
@@ -506,6 +517,7 @@ public class PulseControllerImpl
                 mStreamHandler.unlink();
                 setVisualizerLocked(false);
                 mLinked = false;
+                getNavigationBarView().hideHomeHandle(false);
             }
         }
     }
@@ -522,6 +534,7 @@ public class PulseControllerImpl
                 mLinked = true;
                 if (mRenderer != null) {
                     mRenderer.onVisualizerLinkChanged(true);
+                    getNavigationBarView().hideHomeHandle(true);
                 }
             }
         }
