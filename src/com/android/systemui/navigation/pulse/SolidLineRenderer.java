@@ -38,7 +38,7 @@ import androidx.core.graphics.ColorUtils;
 
 public class SolidLineRenderer extends Renderer {
     private Paint mPaint;
-    private int mUnitsOpacity = 255;
+    private int mUnitsOpacity = 200;
     private int mColor = Color.WHITE;
     private ValueAnimator[] mValueAnimators;
     private FFTAverage[] mFFTAverage;
@@ -161,7 +161,7 @@ public class SolidLineRenderer extends Renderer {
 
     @Override
     public void onFFTUpdate(byte[] fft) {
-        int fudgeFactor = mKeyguardShowing ? mDbFuzzFactor * 2 : mDbFuzzFactor;
+        int fudgeFactor = mKeyguardShowing ? mDbFuzzFactor * 4 : mDbFuzzFactor;
         for (int i = 0; i < mUnits; i++) {
             if (mValueAnimators[i] == null) continue;
             mValueAnimators[i].cancel();
@@ -248,13 +248,13 @@ public class SolidLineRenderer extends Renderer {
 
             // putFloat, getFloat is better. catch it next time
             mDbFuzzFactor = Settings.Secure.getIntForUser(
-                    resolver, Settings.Secure.PULSE_SOLID_FUDGE_FACTOR, 5,
+                    resolver, Settings.Secure.PULSE_SOLID_FUDGE_FACTOR, 4,
                     UserHandle.USER_CURRENT);
             mSmoothingEnabled = Settings.Secure.getIntForUser(resolver,
                     Settings.Secure.PULSE_SMOOTHING_ENABLED, 0, UserHandle.USER_CURRENT) == 1;
 
             int units = Settings.Secure.getIntForUser(
-                    resolver, Settings.Secure.PULSE_SOLID_UNITS_COUNT, 64,
+                    resolver, Settings.Secure.PULSE_SOLID_UNITS_COUNT, 32,
                     UserHandle.USER_CURRENT);
             if (units != mUnits) {
                 stopAnimation(mUnits);

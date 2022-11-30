@@ -58,10 +58,9 @@ import android.widget.FrameLayout;
 import com.android.systemui.Dependency;
 import com.android.systemui.dagger.qualifiers.Background;
 import com.android.systemui.dagger.qualifiers.Main;
+import com.android.systemui.navigationbar.NavigationBarFrame;
 import com.android.systemui.statusbar.CommandQueue;
 import com.android.systemui.statusbar.CommandQueue.Callbacks;
-import com.android.systemui.statusbar.phone.NavigationBarFrame;
-import com.android.systemui.statusbar.phone.NavigationBarView;
 import com.android.systemui.statusbar.phone.StatusBar;
 import com.android.systemui.statusbar.policy.ConfigurationController;
 import com.android.systemui.statusbar.policy.PulseController;
@@ -81,8 +80,8 @@ public class PulseControllerImpl
     public static final boolean DEBUG = false;
 
     private static final String TAG = PulseControllerImpl.class.getSimpleName();
-    private static final int RENDER_STYLE_FADING_BARS = 0;
-    private static final int RENDER_STYLE_SOLID_LINES = 1;
+    private static final int RENDER_STYLE_LEGACY = 0;
+    private static final int RENDER_STYLE_CM = 1;
 
     private Context mContext;
     private Handler mHandler;
@@ -95,6 +94,7 @@ public class PulseControllerImpl
     private PulseView mPulseView;
     private int mPulseStyle;
     private StatusBar mStatusbar;
+    private final PowerManager mPowerManager;
 
     // Pulse state
     private boolean mLinked;
@@ -110,22 +110,20 @@ public class PulseControllerImpl
     private boolean mLsPulseEnabled;
     private boolean mKeyguardShowing;
     private boolean mDozing;
-
-    private boolean mRenderLoadedOnce;
+    private boolean mKeyguardGoingAway;
 
     private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            /*if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+            if (Intent.ACTION_SCREEN_OFF.equals(action)) {
                 mScreenOn = false;
                 doLinkage();
-            } else */if (Intent.ACTION_SCREEN_ON.equals(action)) {
+            } else if (Intent.ACTION_SCREEN_ON.equals(action)) {
                 mScreenOn = true;
                 doLinkage();
-            } else if (PowerManager.ACTION_POWER_SAVE_MODE_CHANGING.equals(intent.getAction())) {
-                mPowerSaveModeEnabled = intent.getBooleanExtra(PowerManager.EXTRA_POWER_SAVE_MODE,
-                        false);
+            } else if (PowerManager.ACTION_POWER_SAVE_MODE_CHANGED.equals(intent.getAction())) {
+                mPowerSaveModeEnabled = mPowerManager.isPowerSaveMode();
                 doLinkage();
             } else if (AudioManager.STREAM_MUTE_CHANGED_ACTION.equals(intent.getAction())
                     || (AudioManager.VOLUME_CHANGED_ACTION.equals(intent.getAction()))) {
@@ -192,7 +190,7 @@ public class PulseControllerImpl
             if (uri.equals(Settings.Secure.getUriFor(Settings.Secure.NAVBAR_PULSE_ENABLED))
                     || uri.equals(Settings.Secure.getUriFor(Settings.Secure.LOCKSCREEN_PULSE_ENABLED))) {
                 updateEnabled();
-                updatePulseVisibility(false);
+                updatePulseVisibility();
             } else if (uri.equals(Settings.Secure.getUriFor(Settings.Secure.PULSE_RENDER_STYLE))) {
                 updateRenderMode();
                 loadRenderer();
@@ -208,40 +206,44 @@ public class PulseControllerImpl
             mNavPulseEnabled = Settings.Secure.getIntForUser(mContext.getContentResolver(),
                     Settings.Secure.NAVBAR_PULSE_ENABLED, 0, UserHandle.USER_CURRENT) == 1;
             mLsPulseEnabled = Settings.Secure.getIntForUser(mContext.getContentResolver(),
-                    Settings.Secure.LOCKSCREEN_PULSE_ENABLED, 0, UserHandle.USER_CURRENT) == 1;
+                    Settings.Secure.LOCKSCREEN_PULSE_ENABLED, 1, UserHandle.USER_CURRENT) == 1;
         }
 
         void updateRenderMode() {
             mPulseStyle = Settings.Secure.getIntForUser(mContext.getContentResolver(),
-                    Settings.Secure.PULSE_RENDER_STYLE, RENDER_STYLE_SOLID_LINES, UserHandle.USER_CURRENT);
+                    Settings.Secure.PULSE_RENDER_STYLE, RENDER_STYLE_CM, UserHandle.USER_CURRENT);
         }
     };
 
     public void notifyKeyguardGoingAway() {
         if (mLsPulseEnabled) {
-            detachPulseFrom(getLsVisualizer(), allowNavPulse(getNavbarFrame())/*keep linked*/);
+            mKeyguardGoingAway = true;
+            updatePulseVisibility();
+            mKeyguardGoingAway = false;
         }
     }
 
-    public void onStartedGoingToSleep() {
-        mScreenOn = false;
-        updatePulseVisibility(true);
-    }
+    private void updatePulseVisibility() {
+        if (mStatusbar == null) return;
 
-    private void updatePulseVisibility(boolean forceStop) {
-        NavigationBarFrame nv = getNavbarFrame();
-        VisualizerView vv = getLsVisualizer();
-        boolean allowLsPulse = !forceStop && allowLsPulse(vv);
-        boolean allowNavPulse = !forceStop && allowNavPulse(nv);
+        NavigationBarFrame nv = mStatusbar.getNavigationBarView() != null ?
+                mStatusbar.getNavigationBarView().getNavbarFrame() : null;
+        VisualizerView vv = mStatusbar.getLsVisualizer();
+        boolean allowLsPulse = vv != null && vv.isAttached()
+                && mLsPulseEnabled && mKeyguardShowing && !mDozing;
+        boolean allowNavPulse = nv!= null && nv.isAttached()
+            && mNavPulseEnabled && !mKeyguardShowing;
 
+        if (mKeyguardGoingAway) {
+            detachPulseFrom(vv, allowNavPulse/*keep linked*/);
+            return;
+        }
         if (!allowNavPulse) {
             detachPulseFrom(nv, allowLsPulse/*keep linked*/);
         }
         if (!allowLsPulse) {
             detachPulseFrom(vv, allowNavPulse/*keep linked*/);
         }
-
-        if (forceStop) return;
 
         if (allowLsPulse) {
             attachPulseTo(vv);
@@ -253,7 +255,7 @@ public class PulseControllerImpl
     public void setDozing(boolean dozing) {
         if (mDozing != dozing) {
             mDozing = dozing;
-            updatePulseVisibility(false);
+            updatePulseVisibility();
         }
     }
 
@@ -263,31 +265,8 @@ public class PulseControllerImpl
             if (mRenderer != null) {
                 mRenderer.setKeyguardShowing(showing);
             }
-            updatePulseVisibility(false);
+            updatePulseVisibility();
         }
-    }
-
-    private NavigationBarFrame getNavbarFrame() {
-        return mStatusbar != null ? mStatusbar.getNavigationBarView().getNavbarFrame() : null;
-    }
-
-    private NavigationBarView getNavigationBarView() {
-        return mStatusbar != null ? mStatusbar.getNavigationBarView() : null;
-    }
-
-    private VisualizerView getLsVisualizer() {
-        return mStatusbar != null ? mStatusbar.getLsVisualizer() : null;
-    }
-
-    private boolean allowNavPulse(NavigationBarFrame v) {
-        if (v == null) return false;
-        return v.isAttached() && mNavPulseEnabled && !mKeyguardShowing;
-    }
-
-    private boolean allowLsPulse(VisualizerView v) {
-        if (v == null) return false;
-        return v.isAttached() && mLsPulseEnabled
-                && mKeyguardShowing && !mDozing;
     }
 
     @Inject
@@ -295,25 +274,24 @@ public class PulseControllerImpl
         mContext = context;
         mStatusbar = Dependency.get(StatusBar.class);
         mHandler = mainHandler;
+        mSettingsObserver = new SettingsObserver(mainHandler);
+        mSettingsObserver.updateSettings();
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         mMusicStreamMuted = isMusicMuted(AudioManager.STREAM_MUSIC);
-        PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
-        mPowerSaveModeEnabled = pm.isPowerSaveMode();
-
+        mPowerManager = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
+        mPowerSaveModeEnabled = mPowerManager.isPowerSaveMode();
+        mSettingsObserver.register();
         mStreamHandler = new VisualizerStreamHandler(mContext, this, mStreamListener, backgroundExecutor);
         mPulseView = new PulseView(context, this);
         mColorController = new ColorController(mContext, mHandler);
+        loadRenderer();
         Dependency.get(CommandQueue.class).addCallback(this);
         IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
-        filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGING);
+        filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
         filter.addAction(AudioManager.STREAM_MUTE_CHANGED_ACTION);
         filter.addAction(AudioManager.VOLUME_CHANGED_ACTION);
         context.registerReceiverAsUser(mBroadcastReceiver, UserHandle.ALL, filter, null, null);
-        mSettingsObserver = new SettingsObserver(mainHandler);
-        mSettingsObserver.register();
-        mSettingsObserver.updateSettings();
-        //loadRenderer();
     }
 
     @Override
@@ -369,8 +347,6 @@ public class PulseControllerImpl
         final boolean isRendering = shouldDrawPulse();
         if (isRendering) {
             mStreamHandler.pause();
-        } else {
-            getNavigationBarView().hideHomeHandle(false);
         }
         if (mRenderer != null) {
             mRenderer.destroy();
@@ -430,9 +406,9 @@ public class PulseControllerImpl
 
     private Renderer getRenderer() {
         switch (mPulseStyle) {
-            case RENDER_STYLE_FADING_BARS:
+            case RENDER_STYLE_LEGACY:
                 return new FadingBlockRenderer(mContext, mHandler, mPulseView, this, mColorController);
-            case RENDER_STYLE_SOLID_LINES:
+            case RENDER_STYLE_CM:
                 return new SolidLineRenderer(mContext, mHandler, mPulseView, this, mColorController);
             default:
                 return new FadingBlockRenderer(mContext, mHandler, mPulseView, this, mColorController);
@@ -476,7 +452,6 @@ public class PulseControllerImpl
     private boolean isAbleToLink() {
         return mScreenOn
                 && mIsMediaPlaying
-                //&& !mLinked
                 && !mPowerSaveModeEnabled
                 && !mMusicStreamMuted
                 && !mScreenPinningEnabled
@@ -493,7 +468,6 @@ public class PulseControllerImpl
                     mRenderer.onVisualizerLinkChanged(false);
                 }
                 mPulseView.postInvalidate();
-                getNavigationBarView().hideHomeHandle(false);
                 notifyStateListeners(false);
             }
         }
@@ -531,7 +505,6 @@ public class PulseControllerImpl
                 mStreamHandler.unlink();
                 setVisualizerLocked(false);
                 mLinked = false;
-                getNavigationBarView().hideHomeHandle(false);
             }
         }
     }
@@ -544,15 +517,10 @@ public class PulseControllerImpl
         if (mStreamHandler != null) {
             if (!mLinked) {
                 setVisualizerLocked(true);
-                mStreamHandler.link(0);
+                mStreamHandler.link();
                 mLinked = true;
-                if (!mRenderLoadedOnce) {
-                    mRenderLoadedOnce = true;
-                    loadRenderer();
-                }
                 if (mRenderer != null) {
                     mRenderer.onVisualizerLinkChanged(true);
-                    getNavigationBarView().hideHomeHandle(true);
                 }
             }
         }
@@ -565,11 +533,6 @@ public class PulseControllerImpl
             mIsMediaPlaying = isPlaying;
             doLinkage();
         }
-    }
-
-    @Override
-    public void setMediaNotificationColor(boolean colorizedMedia, int color) {
-        mColorController.setMediaNotificationColor(colorizedMedia, color);
     }
 
     @Override

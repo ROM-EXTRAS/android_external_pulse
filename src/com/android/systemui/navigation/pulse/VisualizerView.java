@@ -26,11 +26,11 @@ public class VisualizerView extends FrameLayout {
     private boolean mAttached;
 
     public VisualizerView(@NonNull Context context) {
-        this(context, null);
+        super(context);
     }
 
     public VisualizerView(@NonNull Context context, AttributeSet attrs) {
-        this(context, attrs, 0);
+        super(context, attrs);
     }
 
     public VisualizerView(@NonNull Context context, @Nullable AttributeSet attrs,
@@ -40,8 +40,8 @@ public class VisualizerView extends FrameLayout {
 
     @Override
     public void onAttachedToWindow() {
-        super.onAttachedToWindow();
         mAttached = true;
+        super.onAttachedToWindow();
     }
 
     @Override

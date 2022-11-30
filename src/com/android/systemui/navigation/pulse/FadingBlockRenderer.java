@@ -85,7 +85,7 @@ public class FadingBlockRenderer extends Renderer {
 
     @Override
     public void onFFTUpdate(byte[] bytes) {
-        int fudgeFactor = mKeyguardShowing ? mDbFuzzFactor * 2 : mDbFuzzFactor;
+        int fudgeFactor = mKeyguardShowing ? mDbFuzzFactor * 4 : mDbFuzzFactor;
         mFFTBytes = bytes;
         if (mFFTBytes != null) {
             if (mFFTPoints == null || mFFTPoints.length < mFFTBytes.length * 4) {
@@ -124,8 +124,10 @@ public class FadingBlockRenderer extends Renderer {
                 }
             }
         }
-        mCanvas.drawLines(mFFTPoints, mPaint);
-        mCanvas.drawPaint(mFadePaint);
+        if (mCanvas != null) {
+            mCanvas.drawLines(mFFTPoints, mPaint);
+            mCanvas.drawPaint(mFadePaint);
+        }
         postInvalidate();
     }
 
@@ -235,7 +237,7 @@ public class FadingBlockRenderer extends Renderer {
                     resolver, Settings.Secure.PULSE_CUSTOM_DIV, 16,
                     UserHandle.USER_CURRENT);
             int fudgeFactor = Settings.Secure.getIntForUser(
-                    resolver, Settings.Secure.PULSE_CUSTOM_FUDGE_FACTOR, 4,
+                    resolver, Settings.Secure.PULSE_CUSTOM_FUDGE_FACTOR, 5,
                     UserHandle.USER_CURRENT);
             int filledBlock = Settings.Secure.getIntForUser(
                     resolver, Settings.Secure.PULSE_FILLED_BLOCK_SIZE, 4,

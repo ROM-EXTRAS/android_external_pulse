@@ -57,11 +57,6 @@ public abstract class Renderer implements VisualizerStreamHandler.Listener {
         }
     }
 
-    public void setKeyguardShowing(boolean showing) {
-        mKeyguardShowing = showing;
-        onSizeChanged(0, 0, 0, 0);
-    }
-
     public abstract void draw(Canvas canvas);
 
     @Override
@@ -81,4 +76,9 @@ public abstract class Renderer implements VisualizerStreamHandler.Listener {
     public void onUpdateColor(int color) {}
 
     public boolean isValidStream() { return mIsValidStream; }
+
+    public void setKeyguardShowing(boolean showing) {
+        mKeyguardShowing = showing;
+        onSizeChanged(0, 0, 0, 0);
+    }
 }
