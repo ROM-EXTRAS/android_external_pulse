@@ -161,9 +161,6 @@ public class SolidLineRenderer extends Renderer {
             magnitude = rfk * rfk + ifk * ifk;
             dbValue = magnitude > 0 ? (int) (10 * Math.log10(magnitude)) : 0;
             if (mSmoothingEnabled) {
-                if (mFFTAverage == null) {
-                    setupFFTAverage();
-                }
                 dbValue = mFFTAverage[i].average(dbValue);
             }
             if (mVertical) {
@@ -270,12 +267,12 @@ public class SolidLineRenderer extends Renderer {
 
             mPaint.setColor(ColorUtils.setAlphaComponent(mColor, mUnitsOpacity));
         }
-    }
 
-    private void setupFFTAverage() {
-        mFFTAverage = new FFTAverage[mUnits];
-        for (int i = 0; i < mUnits; i++) {
-            mFFTAverage[i] = new FFTAverage();
+        private void setupFFTAverage() {
+            mFFTAverage = new FFTAverage[mUnits];
+            for (int i = 0; i < mUnits; i++) {
+                mFFTAverage[i] = new FFTAverage();
+            }
         }
     }
 }
