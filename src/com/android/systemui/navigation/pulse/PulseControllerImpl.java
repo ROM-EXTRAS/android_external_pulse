@@ -317,8 +317,8 @@ public class PulseControllerImpl
         mHandler = mainHandler;
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         mMusicStreamMuted = isMusicMuted(AudioManager.STREAM_MUSIC);
-        PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
-        mPowerSaveModeEnabled = pm.isPowerSaveMode();
+        mPowerManager = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
+        mPowerSaveModeEnabled = mPowerManager.isPowerSaveMode();
 
         mStreamHandler = new VisualizerStreamHandler(mContext, this, mStreamListener, backgroundExecutor);
         mPulseView = new PulseView(context, this);
