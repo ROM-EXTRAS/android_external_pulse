@@ -67,6 +67,8 @@ import com.android.systemui.statusbar.policy.ConfigurationController;
 import com.android.systemui.statusbar.policy.PulseController;
 import com.android.systemui.statusbar.policy.PulseController.PulseStateListener;
 
+import java.lang.Exception;
+
 import java.util.concurrent.Executor;
 
 import javax.inject.Inject;
@@ -215,7 +217,7 @@ public class PulseControllerImpl
             mNavPulseEnabled = Settings.Secure.getIntForUser(mContext.getContentResolver(),
                     Settings.Secure.NAVBAR_PULSE_ENABLED, 0, UserHandle.USER_CURRENT) == 1;
             mLsPulseEnabled = Settings.Secure.getIntForUser(mContext.getContentResolver(),
-                    Settings.Secure.LOCKSCREEN_PULSE_ENABLED, 0, UserHandle.USER_CURRENT) == 1;
+                    Settings.Secure.LOCKSCREEN_PULSE_ENABLED, 1, UserHandle.USER_CURRENT) == 1;
             mAmbPulseEnabled = Settings.Secure.getIntForUser(mContext.getContentResolver(),
                     Settings.Secure.AMBIENT_PULSE_ENABLED, 0, UserHandle.USER_CURRENT) == 1;
         }
@@ -242,16 +244,16 @@ public class PulseControllerImpl
     private void updatePulseVisibility(boolean forceStop) {
         if (mStatusbar == null) return;
 
-        NavigationBarFrame nv = getNavbarFrame();
-        VisualizerView vv = getLsVisualizer();
+        NavigationBarFrame nv = mStatusbar.getNavigationBarView() != null ?
+                mStatusbar.getNavigationBarView().getNavbarFrame() : null;
+        VisualizerView vv = mStatusbar.getLsVisualizer();
         boolean allowAmbPulse = vv != null && vv.isAttached()
-                && !forceStop
                 && mAmbPulseEnabled && mKeyguardShowing && mDozing;
         boolean allowLsPulse = vv != null && vv.isAttached()
-                && !forceStop
                 && mLsPulseEnabled && mKeyguardShowing && !mDozing;
         boolean allowNavPulse = nv!= null && nv.isAttached()
-                && !forceStop && mNavPulseEnabled && !mKeyguardShowing;
+            && mNavPulseEnabled && !mKeyguardShowing;
+
 
         if (mKeyguardGoingAway) {
             if (mLsPulseAttached) {
@@ -265,14 +267,11 @@ public class PulseControllerImpl
             detachPulseFrom(nv, allowLsPulse || allowAmbPulse/*keep linked*/);
             mNavPulseAttached = false;
         }
-        if (!allowLsPulse && !allowAmbPulse && mNavPulseAttached) {
+        if (!allowLsPulse && !allowAmbPulse && mLsPulseAttached) {
             detachPulseFrom(vv, allowNavPulse/*keep linked*/);
-            mNavPulseAttached = false;
+            mLsPulseAttached = false;
         }
-
-        if (forceStop) return;
-
-        if ((allowLsPulse || allowAmbPulse) && !mNavPulseAttached) {
+        if ((allowLsPulse || allowAmbPulse) && !mLsPulseAttached) {
             attachPulseTo(vv);
             mLsPulseAttached = true;
         } else if (allowNavPulse && !mNavPulseAttached) {
@@ -333,7 +332,7 @@ public class PulseControllerImpl
         mSettingsObserver = new SettingsObserver(mainHandler);
         mSettingsObserver.register();
         mSettingsObserver.updateSettings();
-        //loadRenderer();
+        loadRenderer();
     }
 
     @Override
@@ -390,7 +389,11 @@ public class PulseControllerImpl
         if (isRendering) {
             mStreamHandler.pause();
         } else {
-            getNavigationBarView().hideHomeHandle(false);
+            try {
+                getNavigationBarView().hideHomeHandle(false);
+            } catch (Exception e) {
+                Log.e(TAG, "loadRenderer() Exception -> " + e);
+            }
         }
         if (mRenderer != null) {
             mRenderer.destroy();
@@ -512,7 +515,11 @@ public class PulseControllerImpl
                     mRenderer.onVisualizerLinkChanged(false);
                 }
                 mPulseView.postInvalidate();
-                getNavigationBarView().hideHomeHandle(false);
+                try {
+                    getNavigationBarView().hideHomeHandle(false);
+                } catch (Exception e) {
+                    Log.e(TAG, "doUnlinkVisualizer() Exception -> " + e);
+                }
                 notifyStateListeners(false);
             }
         }
@@ -550,7 +557,11 @@ public class PulseControllerImpl
                 mStreamHandler.unlink();
                 setVisualizerLocked(false);
                 mLinked = false;
-                getNavigationBarView().hideHomeHandle(false);
+                try {
+                    getNavigationBarView().hideHomeHandle(false);
+                } catch (Exception e) {
+                    Log.e(TAG, "doSilentUnlinkVisualizer() Exception -> " + e);
+                }
             }
         }
     }
@@ -565,13 +576,13 @@ public class PulseControllerImpl
                 setVisualizerLocked(true);
                 mStreamHandler.link();
                 mLinked = true;
-                if (!mRenderLoadedOnce) {
-                    mRenderLoadedOnce = true;
-                    loadRenderer();
-                }
                 if (mRenderer != null) {
                     mRenderer.onVisualizerLinkChanged(true);
+                try {
                     getNavigationBarView().hideHomeHandle(true);
+                } catch (Exception e) {
+                    Log.e(TAG, "doLinkVisualizer() Exception -> " + e);
+                }
                 }
             }
         }
