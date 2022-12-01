@@ -95,7 +95,7 @@ public class PulseControllerImpl
     private PulseView mPulseView;
     private int mPulseStyle;
     private StatusBar mStatusbar;
-
+    private final PowerManager mPowerManager;
     // Pulse state
     private boolean mLinked;
     private boolean mPowerSaveModeEnabled;
@@ -326,7 +326,7 @@ public class PulseControllerImpl
         Dependency.get(CommandQueue.class).addCallback(this);
         IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
-        filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGING);
+        filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
         filter.addAction(AudioManager.STREAM_MUTE_CHANGED_ACTION);
         filter.addAction(AudioManager.VOLUME_CHANGED_ACTION);
         context.registerReceiverAsUser(mBroadcastReceiver, UserHandle.ALL, filter, null, null);
