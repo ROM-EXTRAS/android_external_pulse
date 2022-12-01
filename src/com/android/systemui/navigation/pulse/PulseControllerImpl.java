@@ -60,8 +60,8 @@ import com.android.systemui.dagger.qualifiers.Background;
 import com.android.systemui.dagger.qualifiers.Main;
 import com.android.systemui.statusbar.CommandQueue;
 import com.android.systemui.statusbar.CommandQueue.Callbacks;
-import com.android.systemui.statusbar.navigationbar.NavigationBarFrame;
-import com.android.systemui.statusbar.navigationbar.NavigationBarView;
+import com.android.systemui.navigationbar.NavigationBarFrame;
+import com.android.systemui.navigationbar.NavigationBarView;
 import com.android.systemui.statusbar.phone.StatusBar;
 import com.android.systemui.statusbar.policy.ConfigurationController;
 import com.android.systemui.statusbar.policy.PulseController;
@@ -121,15 +121,14 @@ public class PulseControllerImpl
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            /*if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+            if (Intent.ACTION_SCREEN_OFF.equals(action)) {
                 mScreenOn = false;
                 doLinkage();
-            } else */if (Intent.ACTION_SCREEN_ON.equals(action)) {
+            } else if (Intent.ACTION_SCREEN_ON.equals(action)) {
                 mScreenOn = true;
                 doLinkage();
-            } else if (PowerManager.ACTION_POWER_SAVE_MODE_CHANGING.equals(intent.getAction())) {
-                mPowerSaveModeEnabled = intent.getBooleanExtra(PowerManager.EXTRA_POWER_SAVE_MODE,
-                        false);
+            } else if (PowerManager.ACTION_POWER_SAVE_MODE_CHANGED.equals(intent.getAction())) {
+                mPowerSaveModeEnabled = mPowerManager.isPowerSaveMode();
                 doLinkage();
             } else if (AudioManager.STREAM_MUTE_CHANGED_ACTION.equals(intent.getAction())
                     || (AudioManager.VOLUME_CHANGED_ACTION.equals(intent.getAction()))) {
