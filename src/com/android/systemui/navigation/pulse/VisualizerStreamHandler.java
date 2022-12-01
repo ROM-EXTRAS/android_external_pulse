@@ -25,12 +25,13 @@ package com.android.systemui.navigation.pulse;
 import android.content.Context;
 import android.media.audiofx.Visualizer;
 import android.os.Handler;
-//import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
 import com.android.systemui.Dependency;
-import com.android.systemui.UiOffloadThread;
+import com.android.systemui.dagger.qualifiers.Background;
+
+import java.util.concurrent.Executor;
 
 public class VisualizerStreamHandler {
     public interface Listener {
@@ -51,7 +52,6 @@ public class VisualizerStreamHandler {
     protected static final int VALID_BYTES_THRESHOLD = 3;
 
     protected Visualizer mVisualizer;
-    protected int mAudioSessionId;
 
     // manage stream validation
     protected int mConsecutiveFrames;
@@ -64,8 +64,7 @@ public class VisualizerStreamHandler {
     protected PulseControllerImpl mController;
     protected Listener mListener;
 
-    private final UiOffloadThread mUiOffloadThread;
-    //private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
+    private final Executor mUiBgExecutor;
 
     private Handler mHandler = new Handler() {
         @Override
@@ -88,33 +87,24 @@ public class VisualizerStreamHandler {
     };
 
     public VisualizerStreamHandler(Context context, PulseControllerImpl controller,
-            VisualizerStreamHandler.Listener listener) {
+            VisualizerStreamHandler.Listener listener, @Background Executor backgroundExecutor) {
         mContext = context;
         mController = controller;
         mListener = listener;
-        mUiOffloadThread = Dependency.get(UiOffloadThread.class);
+        mUiBgExecutor = backgroundExecutor;
     }
 
     /**
      * Links the visualizer to a player
-     * 
-     * @param player - MediaPlayer instance to link to
      */
-    public final void link(int audioSessionId) {
-    	//mMainThreadHandler.post(() -> {
-    	mUiOffloadThread.execute(() -> {
-            if (mVisualizer != null && audioSessionId != mAudioSessionId) {
-                mVisualizer.setEnabled(false);
-                mVisualizer.release();
-                mVisualizer = null;
-            }
+    public final void link() {
+    	mUiBgExecutor.execute(() -> {
             pause();
             resetAnalyzer();
-            mAudioSessionId = audioSessionId;
 
             if (mVisualizer == null) {
                 try {
-                    mVisualizer = new Visualizer(audioSessionId);
+                    mVisualizer = new Visualizer(0);
                 } catch (Exception e) {
                     Log.e(TAG, "Error enabling visualizer!", e);
                     return;
