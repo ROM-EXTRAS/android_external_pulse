@@ -565,8 +565,8 @@ public class PulseControllerImpl implements
     }
 
     @Override
-    public void setMediaNotificationColor(boolean colorizedMedia, int color) {
-        mColorController.setMediaNotificationColor(colorizedMedia, color);
+    public void setMediaNotificationColor(int color) {
+        mColorController.setMediaNotificationColor(color);
     }
 
     @Override

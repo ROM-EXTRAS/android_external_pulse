@@ -156,8 +156,8 @@ public class ColorController extends ContentObserver
         }
     }
 
-    public void setMediaNotificationColor(boolean colorizedMedia, int color) {
-        if (colorizedMedia) {
+    public void setMediaNotificationColor(int color) {
+        if (color != 0) {
             try {
                  // be sure the color has an acceptable contrast against black navbar
                  mAlbumColor = ContrastColorUtil.findContrastColorAgainstDark(color, 0x000000, true, 2);
