@@ -55,29 +55,24 @@ import android.view.View;
 import android.view.animation.Animation;
 import android.widget.FrameLayout;
 
-import com.android.systemui.Dependency;
-import com.android.systemui.dagger.qualifiers.Background;
-import com.android.systemui.dagger.qualifiers.Main;
+import com.android.systemui.dagger.SysUISingleton;
+import com.android.systemui.dagger.qualifiers.UiBackground;
 import com.android.systemui.statusbar.CommandQueue;
 import com.android.systemui.statusbar.CommandQueue.Callbacks;
 import com.android.systemui.navigationbar.NavigationBarFrame;
 import com.android.systemui.navigationbar.NavigationBarView;
-import com.android.systemui.statusbar.phone.StatusBar;
+import com.android.systemui.statusbar.NotificationMediaManager;
+import com.android.systemui.statusbar.phone.CentralSurfacesImpl;
 import com.android.systemui.statusbar.policy.ConfigurationController;
-import com.android.systemui.statusbar.policy.PulseController;
-import com.android.systemui.statusbar.policy.PulseController.PulseStateListener;
 
 import java.lang.Exception;
 
 import java.util.concurrent.Executor;
 
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Singleton;
-
-@Singleton
-public class PulseControllerImpl
-        implements PulseController, CommandQueue.Callbacks,
+@SysUISingleton
+public class PulseControllerImpl implements
+        NotificationMediaManager.MediaListener,
+        CommandQueue.Callbacks,
         ConfigurationController.ConfigurationListener {
 
     public static final boolean DEBUG = false;
@@ -87,16 +82,14 @@ public class PulseControllerImpl
     private static final int RENDER_STYLE_SOLID_LINES = 1;
 
     private Context mContext;
-    private Handler mHandler;
     private AudioManager mAudioManager;
     private Renderer mRenderer;
     private VisualizerStreamHandler mStreamHandler;
     private ColorController mColorController;
-    private final List<PulseStateListener> mStateListeners = new ArrayList<>();
     private SettingsObserver mSettingsObserver;
     private PulseView mPulseView;
     private int mPulseStyle;
-    private StatusBar mStatusbar;
+    private CentralSurfacesImpl mStatusbar;
     private final PowerManager mPowerManager;
     // Pulse state
     private boolean mLinked;
@@ -153,7 +146,6 @@ public class PulseControllerImpl
                 mRenderer.onStreamAnalyzed(isValid);
             }
             if (isValid) {
-                notifyStateListeners(true);
                 turnOnPulse();
             } else {
                 doSilentUnlinkVisualizer();
@@ -217,7 +209,7 @@ public class PulseControllerImpl
             mNavPulseEnabled = Settings.Secure.getIntForUser(mContext.getContentResolver(),
                     Settings.Secure.NAVBAR_PULSE_ENABLED, 0, UserHandle.USER_CURRENT) == 1;
             mLsPulseEnabled = Settings.Secure.getIntForUser(mContext.getContentResolver(),
-                    Settings.Secure.LOCKSCREEN_PULSE_ENABLED, 1, UserHandle.USER_CURRENT) == 1;
+                    Settings.Secure.LOCKSCREEN_PULSE_ENABLED, 0, UserHandle.USER_CURRENT) == 1;
             mAmbPulseEnabled = Settings.Secure.getIntForUser(mContext.getContentResolver(),
                     Settings.Secure.AMBIENT_PULSE_ENABLED, 0, UserHandle.USER_CURRENT) == 1;
         }
@@ -309,34 +301,36 @@ public class PulseControllerImpl
         return mStatusbar != null ? mStatusbar.getLsVisualizer() : null;
     }
 
-    @Inject
-    public PulseControllerImpl(Context context, @Main Handler mainHandler, @Background Executor backgroundExecutor) {
+    private final Handler mHandler = new Handler();
+
+    public PulseControllerImpl(Context context,
+            CentralSurfacesImpl statusBar,
+            CommandQueue commandQueue,
+            @UiBackground Executor uiBgExecutor) {
         mContext = context;
-        mStatusbar = Dependency.get(StatusBar.class);
-        mHandler = mainHandler;
+        mStatusbar = statusBar;
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         mMusicStreamMuted = isMusicMuted(AudioManager.STREAM_MUSIC);
         mPowerManager = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
         mPowerSaveModeEnabled = mPowerManager.isPowerSaveMode();
 
-        mStreamHandler = new VisualizerStreamHandler(mContext, this, mStreamListener, backgroundExecutor);
+        mStreamHandler = new VisualizerStreamHandler(mContext, this, mStreamListener, uiBgExecutor);
         mPulseView = new PulseView(context, this);
         mColorController = new ColorController(mContext, mHandler);
-        Dependency.get(CommandQueue.class).addCallback(this);
+        commandQueue.addCallback(this);
         IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
         filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
         filter.addAction(AudioManager.STREAM_MUTE_CHANGED_ACTION);
         filter.addAction(AudioManager.VOLUME_CHANGED_ACTION);
         context.registerReceiverAsUser(mBroadcastReceiver, UserHandle.ALL, filter, null, null);
-        mSettingsObserver = new SettingsObserver(mainHandler);
+        mSettingsObserver = new SettingsObserver(mHandler);
         mSettingsObserver.register();
         mSettingsObserver.updateSettings();
         loadRenderer();
     }
 
-    @Override
-    public void attachPulseTo(FrameLayout parent) {
+    private void attachPulseTo(FrameLayout parent) {
         if (parent == null) return;
         View v = parent.findViewWithTag(PulseView.TAG);
         if (v == null) {
@@ -347,8 +341,7 @@ public class PulseControllerImpl
         }
     }
 
-    @Override
-    public void detachPulseFrom(FrameLayout parent, boolean keepLinked) {
+    private void detachPulseFrom(FrameLayout parent, boolean keepLinked) {
         if (parent == null) return;
         View v = parent.findViewWithTag(PulseView.TAG);
         if (v != null) {
@@ -356,31 +349,6 @@ public class PulseControllerImpl
             mAttached = keepLinked;
             log("detachPulseFrom() ");
             doLinkage();
-        }
-    }
-
-    @Override
-    public void addCallback(PulseStateListener listener) {
-        mStateListeners.add(listener);
-        if (shouldDrawPulse()) {
-            listener.onPulseStateChanged(true);
-        }
-    }
-
-    @Override
-    public void removeCallback(PulseStateListener listener) {
-        mStateListeners.remove(listener);
-    }
-
-    private void notifyStateListeners(boolean isStarting) {
-        for (PulseStateListener listener : mStateListeners) {
-            if (listener != null) {
-                if (isStarting) {
-                    listener.onPulseStateChanged(true);
-                } else {
-                    listener.onPulseStateChanged(false);
-                }
-            }
         }
     }
 
@@ -520,7 +488,6 @@ public class PulseControllerImpl
                 } catch (Exception e) {
                     Log.e(TAG, "doUnlinkVisualizer() Exception -> " + e);
                 }
-                notifyStateListeners(false);
             }
         }
     }
