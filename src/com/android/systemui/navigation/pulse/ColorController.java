@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 The DirtyUnicorns Project
+ * Copyright (C) 2020-2024 crDroid Android Project
  *
  * @author: Randall Rushing <randall.rushing@gmail.com>
  *
@@ -20,7 +21,6 @@
 
 package com.android.systemui.navigation.pulse;
 
-import com.android.systemui.Dependency;
 import com.android.systemui.statusbar.policy.ConfigurationController;
 
 import android.content.ContentResolver;
@@ -58,7 +58,10 @@ public class ColorController extends ContentObserver
     // Try to be more efficient
     private int mOldColor;
 
-    public ColorController(Context context, Handler handler) {
+    public ColorController(
+            Context context,
+            Handler handler,
+            ConfigurationController configurationController) {
         super(handler);
         mContext = context;
         mLavaLamp = new ColorAnimator();
@@ -67,7 +70,7 @@ public class ColorController extends ContentObserver
         mAlbumColor = mAccentColor;
         updateSettings();
         startListening();
-        Dependency.get(ConfigurationController.class).addCallback(this);
+        configurationController.addCallback(this);
 
         mOldColor = 999;
     }

@@ -1,6 +1,7 @@
 /**
  * Copyright (C) 2014 The TeamEos Project
  * Copyright (C) 2016 The DirtyUnicorns Project
+ * Copyright (C) 2020-2024 crDroid Android Project
  *
  * @author: Randall Rushing <randall.rushing@gmail.com>
  *
@@ -72,8 +73,7 @@ import java.util.concurrent.Executor;
 @SysUISingleton
 public class PulseControllerImpl implements
         NotificationMediaManager.MediaListener,
-        CommandQueue.Callbacks,
-        ConfigurationController.ConfigurationListener {
+        CommandQueue.Callbacks {
 
     public static final boolean DEBUG = false;
 
@@ -303,10 +303,12 @@ public class PulseControllerImpl implements
 
     private final Handler mHandler = new Handler();
 
-    public PulseControllerImpl(Context context,
+    public PulseControllerImpl(
+            Context context,
             CentralSurfacesImpl statusBar,
             CommandQueue commandQueue,
-            @UiBackground Executor uiBgExecutor) {
+            @UiBackground Executor uiBgExecutor,
+            ConfigurationController configurationController) {
         mContext = context;
         mStatusbar = statusBar;
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
@@ -316,7 +318,7 @@ public class PulseControllerImpl implements
 
         mStreamHandler = new VisualizerStreamHandler(mContext, this, mStreamListener, uiBgExecutor);
         mPulseView = new PulseView(context, this);
-        mColorController = new ColorController(mContext, mHandler);
+        mColorController = new ColorController(mContext, mHandler, configurationController);
         commandQueue.addCallback(this);
         IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
