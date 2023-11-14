@@ -32,6 +32,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.UserHandle;
 import android.provider.Settings;
+import android.util.Log;
 import android.util.TypedValue;
 
 import com.android.internal.util.ContrastColorUtil;
@@ -44,6 +45,7 @@ public class ColorController extends ContentObserver
     public static final int COLOR_TYPE_LAVALAMP = 2;
     public static final int COLOR_TYPE_AUTO = 3;
     public static final int LAVA_LAMP_SPEED_DEF = 10000;
+    private static final String TAG = "ColorController";
 
     private Context mContext;
     private Renderer mRenderer;
@@ -52,6 +54,9 @@ public class ColorController extends ContentObserver
     private int mAccentColor;
     private int mColor;
     private int mAlbumColor;
+
+    // Try to be more efficient
+    private int mOldColor;
 
     public ColorController(Context context, Handler handler) {
         super(handler);
@@ -63,6 +68,8 @@ public class ColorController extends ContentObserver
         updateSettings();
         startListening();
         Dependency.get(ConfigurationController.class).addCallback(this);
+
+        mOldColor = 999;
     }
 
     void setRenderer(Renderer renderer) {
@@ -157,6 +164,14 @@ public class ColorController extends ContentObserver
     }
 
     public void setMediaNotificationColor(int color) {
+        // Try to be more efficient
+        if (mOldColor == color) {
+            Log.d(TAG, "Reusing old color");
+            return;
+        }
+
+        mOldColor = color;
+
         if (color != 0) {
             try {
                  // be sure the color has an acceptable contrast against black navbar
