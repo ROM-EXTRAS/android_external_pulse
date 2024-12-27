@@ -1,7 +1,7 @@
 /**
  * Copyright (C) 2016 The DirtyUnicorns Project
  * Copyright (C) 2015 The CyanogenMod Project
- * 
+ *
  * @author: Randall Rushing <randall.rushing@gmail.com>
  *
  * Contributions from The CyanogenMod Project
@@ -25,6 +25,7 @@ package com.android.systemui.navigation.pulse;
 import android.animation.ValueAnimator;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.database.ContentObserver;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -143,7 +144,7 @@ public class SolidLineRenderer extends Renderer {
         if (mView.getWidth() > 0 && mView.getHeight() > 0) {
             mWidth = mView.getWidth();
             mHeight = mView.getHeight();
-            mVertical = mKeyguardShowing ? mHeight < mWidth : mHeight > mWidth;
+            mVertical = mContext.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
             loadValueAnimators();
             if (mVertical) {
                 setVerticalPoints();
@@ -257,7 +258,7 @@ public class SolidLineRenderer extends Renderer {
                     UserHandle.USER_CURRENT);
             mSmoothingEnabled = Settings.Secure.getIntForUser(resolver,
                     Settings.Secure.PULSE_SMOOTHING_ENABLED, 0, UserHandle.USER_CURRENT) == 1;
-            mRounded = Settings.Secure.getIntForUser(resolver, 
+            mRounded = Settings.Secure.getIntForUser(resolver,
                     Settings.Secure.PULSE_SOLID_UNITS_ROUNDED, 0, UserHandle.USER_CURRENT) == 1;
 
             int units = Settings.Secure.getIntForUser(
