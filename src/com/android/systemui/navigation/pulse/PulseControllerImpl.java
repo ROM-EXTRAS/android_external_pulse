@@ -66,6 +66,9 @@ import com.android.systemui.navigationbar.views.NavigationBarView;
 import com.android.systemui.statusbar.NotificationMediaManager;
 import com.android.systemui.statusbar.phone.CentralSurfacesImpl;
 import com.android.systemui.statusbar.policy.ConfigurationController;
+import com.android.systemui.media.controls.ui.controller.MediaControlPanel;
+import com.android.systemui.colorextraction.SysuiColorExtractor;
+import com.android.systemui.colorextraction.SysuiColorExtractor.MediaAccentColorListener;
 
 import java.lang.Exception;
 
@@ -92,6 +95,7 @@ public class PulseControllerImpl implements
     private int mPulseStyle;
     private CentralSurfacesImpl mStatusbar;
     private final PowerManager mPowerManager;
+    private MediaControlPanel mMediaControlPanel;
     // Pulse state
     private boolean mLinked;
     private boolean mPowerSaveModeEnabled;
@@ -135,6 +139,9 @@ public class PulseControllerImpl implements
                         doLinkage();
                     }
                 }
+            } else if (SysuiColorExtractor.ACTION_MEDIA_ACCENT_COLOR_CHANGED.equals(intent.getAction())) {
+                int color = intent.getIntExtra("color", Color.BLACK);
+                Log.e(TAG, "DF: Got Intent Color: " + color);
             }
         }
     };
@@ -321,6 +328,7 @@ public class PulseControllerImpl implements
         mSettingsObserver = new SettingsObserver(mHandler);
         mSettingsObserver.register();
         mSettingsObserver.updateSettings();
+        // mMediaControlPanel.registerAccentColorListener(this);
         loadRenderer();
     }
 
@@ -561,10 +569,18 @@ public class PulseControllerImpl implements
             mIsMediaPlaying = isPlaying;
             doLinkage();
         }
+        Log.e(TAG, "DF: onPrimaryMetadataOrStateChanged()");
     }
+
+    // @Override
+    // public void onMediaAccentColorChanged(int color) {
+    //     // mColorController.setMediaNotificationColor(color);
+    //     Log.e(TAG, "DF: onMediaAccentColorChanged() Exception -> " + color);
+    // }
 
     @Override
     public void setMediaNotificationColor(int color) {
+        Log.e(TAG, "DF: setMediaNotificationColor() -> " + color);
         mColorController.setMediaNotificationColor(color);
     }
 
