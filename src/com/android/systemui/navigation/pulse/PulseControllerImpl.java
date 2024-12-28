@@ -76,15 +76,15 @@ import java.util.concurrent.Executor;
 
 import javax.inject.Inject;
 
-// @SysUISingleton
-// public class PulseControllerImpl implements
-//         NotificationMediaManager.MediaListener, SysuiColorExtractor.MediaAccentColorListener,
-//         CommandQueue.Callbacks {
-
 @SysUISingleton
 public class PulseControllerImpl implements
-        NotificationMediaManager.MediaListener,
+        NotificationMediaManager.MediaListener, SysuiColorExtractor.MediaAccentColorListener,
         CommandQueue.Callbacks {
+
+// @SysUISingleton
+// public class PulseControllerImpl implements
+//         NotificationMediaManager.MediaListener,
+//         CommandQueue.Callbacks {
 
     public static final boolean DEBUG = false;
 
@@ -357,7 +357,7 @@ public class PulseControllerImpl implements
         mSettingsObserver.updateSettings();
         // mMediaControlPanel.registerAccentColorListener(this);
         loadRenderer();
-        // mColorExtractor.addMediaAccentColorListener(this);
+        mColorExtractor.addMediaAccentColorListener(this);
     }
 
     private void attachPulseTo(FrameLayout parent) {
@@ -601,11 +601,16 @@ public class PulseControllerImpl implements
         Log.e(TAG, "DF: onPrimaryMetadataOrStateChanged()");
     }
 
-    // @Override
-    // public void onMediaAccentColorUpdated(int color) {
-    //     // mColorController.setMediaNotificationColor(color);
-    //     Log.e(TAG, "DF: onMediaAccentColorUpdated() Exception -> " + color);
-    // }
+    @Override
+    public void onMediaAccentColorUpdated(int color) {
+        // mColorController.setMediaNotificationColor(color);
+        try {
+            mColorController.setMediaNotificationColor(color);
+            Log.e(TAG, "DF: onMediaAccentColorUpdated() Changed color -> " + color);
+        } catch (Exception e) {
+            Log.e(TAG, "onMediaAccentColorUpdated() Exception -> " + e);
+        }
+    }
 
     @Override
     public void setMediaNotificationColor(int color) {
@@ -618,7 +623,7 @@ public class PulseControllerImpl implements
             Log.e(TAG, "setMediaNotificationColor() Exception -> " + e);
         }
 
-        mColorController.setMediaNotificationColor(color);
+        // mColorController.setMediaNotificationColor(color);
     }
 
     @Override
