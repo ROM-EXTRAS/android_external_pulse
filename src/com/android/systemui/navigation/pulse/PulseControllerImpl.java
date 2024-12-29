@@ -66,14 +66,19 @@ import com.android.systemui.navigationbar.views.NavigationBarView;
 import com.android.systemui.statusbar.NotificationMediaManager;
 import com.android.systemui.statusbar.phone.CentralSurfacesImpl;
 import com.android.systemui.statusbar.policy.ConfigurationController;
+import com.android.systemui.media.controls.ui.controller.MediaControlPanel;
+import com.android.systemui.colorextraction.SysuiColorExtractor;
+import com.android.systemui.colorextraction.SysuiColorExtractor.MediaAccentColorListener;
 
 import java.lang.Exception;
 
 import java.util.concurrent.Executor;
 
+import javax.inject.Inject;
+
 @SysUISingleton
 public class PulseControllerImpl implements
-        NotificationMediaManager.MediaListener,
+        NotificationMediaManager.MediaListener, SysuiColorExtractor.MediaAccentColorListener,
         CommandQueue.Callbacks {
 
     public static final boolean DEBUG = false;
@@ -92,6 +97,7 @@ public class PulseControllerImpl implements
     private int mPulseStyle;
     private CentralSurfacesImpl mStatusbar;
     private final PowerManager mPowerManager;
+    private MediaControlPanel mMediaControlPanel;
     // Pulse state
     private boolean mLinked;
     private boolean mPowerSaveModeEnabled;
@@ -111,6 +117,7 @@ public class PulseControllerImpl implements
     private boolean mDozing;
     private boolean mKeyguardGoingAway;
     private boolean mRenderLoadedOnce;
+    @Inject SysuiColorExtractor mColorExtractor;
 
     private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -265,8 +272,12 @@ public class PulseControllerImpl implements
     public void setDozing(boolean dozing) {
         if (mDozing != dozing) {
             mDozing = dozing;
-            if (mPulseEnabled)
-                updatePulseVisibility();
+            try {
+                if (mPulseEnabled)
+                    updatePulseVisibility();
+            } catch (Exception e) {
+                Log.e(TAG, "setDozing Exception -> " + e);
+            }
         }
     }
 
@@ -276,8 +287,12 @@ public class PulseControllerImpl implements
             if (mRenderer != null) {
                 mRenderer.setKeyguardShowing(showing);
             }
-            if (mPulseEnabled)
-                updatePulseVisibility();
+            try {
+                if (mPulseEnabled)
+                    updatePulseVisibility();
+            } catch (Exception e) {
+                Log.e(TAG, "setKeyguardShowing Exception -> " + e);
+            }
         }
     }
 
@@ -300,14 +315,14 @@ public class PulseControllerImpl implements
             CentralSurfacesImpl statusBar,
             CommandQueue commandQueue,
             @UiBackground Executor uiBgExecutor,
-            ConfigurationController configurationController) {
+            ConfigurationController configurationController,
+            SysuiColorExtractor colorExtractor) {
         mContext = context;
         mStatusbar = statusBar;
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         mMusicStreamMuted = isMusicMuted(AudioManager.STREAM_MUSIC);
         mPowerManager = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
         mPowerSaveModeEnabled = mPowerManager.isPowerSaveMode();
-
         mStreamHandler = new VisualizerStreamHandler(mContext, this, mStreamListener, uiBgExecutor);
         mPulseView = new PulseView(context, this);
         mColorController = new ColorController(mContext, mHandler, configurationController);
@@ -322,6 +337,9 @@ public class PulseControllerImpl implements
         mSettingsObserver.register();
         mSettingsObserver.updateSettings();
         loadRenderer();
+
+        mColorExtractor = colorExtractor;
+        mColorExtractor.addMediaAccentColorListener(this);
     }
 
     private void attachPulseTo(FrameLayout parent) {
@@ -564,8 +582,14 @@ public class PulseControllerImpl implements
     }
 
     @Override
-    public void setMediaNotificationColor(int color) {
-        mColorController.setMediaNotificationColor(color);
+    public void onMediaAccentColorUpdated(int color) {
+        // mColorController.setMediaNotificationColor(color);
+        try {
+            mColorController.setMediaNotificationColor(color);
+            Log.e(TAG, "DF: onMediaAccentColorUpdated() Changed color -> " + color);
+        } catch (Exception e) {
+            Log.e(TAG, "onMediaAccentColorUpdated() Exception -> " + e);
+        }
     }
 
     @Override
