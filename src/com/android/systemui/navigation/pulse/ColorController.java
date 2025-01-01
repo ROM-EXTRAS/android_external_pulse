@@ -167,6 +167,10 @@ public class ColorController extends ContentObserver
 
     public void setMediaNotificationColor(int color) {
         // Try to be more efficient
+        if (mColorType != COLOR_TYPE_AUTO) {
+            Log.d(TAG, "Not using auto color mode");
+            return;
+        }
         if (mOldColor == color) {
             Log.d(TAG, "Reusing old color");
             return;
