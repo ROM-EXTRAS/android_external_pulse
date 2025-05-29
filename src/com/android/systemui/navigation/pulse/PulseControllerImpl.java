@@ -118,7 +118,7 @@ public class PulseControllerImpl implements
     private boolean mDozing;
     private boolean mKeyguardGoingAway;
     private boolean mRenderLoadedOnce;
-    @Inject SysuiColorExtractor mColorExtractor;
+    private final SysuiColorExtractor mColorExtractor;
     private boolean mMACLRegistered = false;
 
     private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
