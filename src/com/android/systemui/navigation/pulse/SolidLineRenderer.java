@@ -50,7 +50,6 @@ public class SolidLineRenderer extends Renderer {
     private float magnitude;
     private int mDbFuzzFactor;
     private boolean mVertical;
-    private boolean mLeftInLandscape;
     private int mWidth, mHeight, mUnits;
 
     private boolean mSmoothingEnabled;
@@ -66,14 +65,6 @@ public class SolidLineRenderer extends Renderer {
         mObserver = new CMRendererObserver(handler);
         mObserver.updateSettings();
         loadValueAnimators();
-    }
-
-    @Override
-    public void setLeftInLandscape(boolean leftInLandscape) {
-        if (mLeftInLandscape != leftInLandscape) {
-            mLeftInLandscape = leftInLandscape;
-            onSizeChanged(0, 0, 0, 0);
-        }
     }
 
     private void loadValueAnimators() {
@@ -134,8 +125,8 @@ public class SolidLineRenderer extends Renderer {
         mPaint.setStrokeCap(mRounded ? Paint.Cap.ROUND : Paint.Cap.BUTT);
         for (int i = 0; i < mUnits; i++) {
             mFFTPoints[i * 4 + 1] = mFFTPoints[i * 4 + 3] = i * barUnit + (barHeight / 2);
-            mFFTPoints[i * 4] = mLeftInLandscape ? 0 : mWidth;
-            mFFTPoints[i * 4 + 2] = mLeftInLandscape ? 0 : mWidth;
+            mFFTPoints[i * 4] = mWidth;
+            mFFTPoints[i * 4 + 2] = mWidth;
         }
     }
 
@@ -183,13 +174,8 @@ public class SolidLineRenderer extends Renderer {
                 dbValue = mFFTAverage[i].average(dbValue);
             }
             if (mVertical) {
-                if (mLeftInLandscape) {
-                    mValueAnimators[i].setFloatValues(mFFTPoints[i * 4],
-                            dbValue * fudgeFactor);
-                } else {
-                    mValueAnimators[i].setFloatValues(mFFTPoints[i * 4],
-                            mFFTPoints[2] - (dbValue * fudgeFactor));
-                }
+                mValueAnimators[i].setFloatValues(mFFTPoints[i * 4],
+                        mFFTPoints[2] - (dbValue * fudgeFactor));
             } else {
                 mValueAnimators[i].setFloatValues(mFFTPoints[i * 4 + 1],
                         mFFTPoints[3] - (dbValue * fudgeFactor));

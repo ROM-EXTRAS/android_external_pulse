@@ -104,7 +104,6 @@ public class PulseControllerImpl implements
     private boolean mPowerSaveModeEnabled;
     private boolean mScreenOn = true; // MUST initialize as true
     private boolean mMusicStreamMuted;
-    private boolean mLeftInLandscape;
     private boolean mScreenPinningEnabled;
     private boolean mIsMediaPlaying;
     private boolean mAttached;
@@ -416,7 +415,6 @@ public class PulseControllerImpl implements
         }
         mRenderer = getRenderer();
         mColorController.setRenderer(mRenderer);
-        mRenderer.setLeftInLandscape(mLeftInLandscape);
         if (isRendering) {
             mRenderer.onStreamAnalyzed(true);
             mStreamHandler.resume();
@@ -427,16 +425,6 @@ public class PulseControllerImpl implements
     public void screenPinningStateChanged(boolean enabled) {
         mScreenPinningEnabled = enabled;
         doLinkage();
-    }
-
-    @Override
-    public void leftInLandscapeChanged(boolean isLeft) {
-        if (mLeftInLandscape != isLeft) {
-            mLeftInLandscape = isLeft;
-            if (mRenderer != null) {
-                mRenderer.setLeftInLandscape(isLeft);
-            }
-        }
     }
 
     /**

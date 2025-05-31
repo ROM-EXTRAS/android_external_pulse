@@ -42,7 +42,6 @@ public class FadingBlockRenderer extends Renderer {
     private Paint mPaint;
     private Paint mFadePaint;
     private boolean mVertical;
-    private boolean mLeftInLandscape;
     private FFTAverage[] mFFTAverage;
     private float[] mFFTPoints;
     private byte rfk, ifk;
@@ -119,9 +118,8 @@ public class FadingBlockRenderer extends Renderer {
                     dbValue = mFFTAverage[i].average(dbValue);
                 }
                 if (mVertical) {
-                    mFFTPoints[i * 4] = mLeftInLandscape ? 0 : mWidth;
-                    mFFTPoints[i * 4 + 2] = mLeftInLandscape ? (dbValue * fudgeFactor + DBFUZZ)
-                            : (mWidth - 1 * (dbValue * fudgeFactor + DBFUZZ));
+                    mFFTPoints[i * 4] = mWidth;
+                    mFFTPoints[i * 4 + 2] = mWidth - 1 * (dbValue * fudgeFactor + DBFUZZ);
                 } else {
                     mFFTPoints[i * 4 + 1] = mHeight;
                     mFFTPoints[i * 4 + 3] = mHeight - 1 * (dbValue * fudgeFactor + DBFUZZ);
@@ -150,14 +148,6 @@ public class FadingBlockRenderer extends Renderer {
             mVertical = mContext.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
             mCanvasBitmap = Bitmap.createBitmap(mWidth, mHeight, Config.ARGB_8888);
             mCanvas = new Canvas(mCanvasBitmap);
-        }
-    }
-
-    @Override
-    public void setLeftInLandscape(boolean leftInLandscape) {
-        if (mLeftInLandscape != leftInLandscape) {
-            mLeftInLandscape = leftInLandscape;
-            onSizeChanged(0, 0, 0, 0);
         }
     }
 
