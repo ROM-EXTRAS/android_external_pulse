@@ -251,11 +251,13 @@ public class PulseControllerImpl implements
 
     private void updatePulseVisibility() {
         if (mStatusbar == null || !mPulseEnabled) {
+            Log.e(TAG, "updatePulseVisibility(): Returning, mStatusbar is: " + (mStatusbar == null) );
             return;
         }
 
-        NavigationBarFrame nv = mStatusbar.getNavigationBarView() != null ?
-                mStatusbar.getNavigationBarView().getNavbarFrame() : null;
+        NavigationBarView navBarView = mStatusbar.getNavigationBarView();
+        NavigationBarFrame nv = (navBarView != null) ? navBarView.getNavbarFrame() : null;
+
         VisualizerView vv = mStatusbar.getLsVisualizer();
         boolean allowAmbPulse = vv != null && vv.isAttached()
                 && mAmbPulseEnabled && mKeyguardShowing && mDozing;
@@ -263,6 +265,8 @@ public class PulseControllerImpl implements
                 && mLsPulseEnabled && mKeyguardShowing && !mDozing;
         boolean allowNavPulse = nv != null && nv.isAttached()
             && mNavPulseEnabled && !mKeyguardShowing;
+
+        Log.e(TAG, "updatePulseVisibility(): Status: allowAmbPulse, allowLsPulse, allowNavPulse: " + allowAmbPulse + allowLsPulse + allowNavPulse );
 
 
         if (mKeyguardGoingAway) {
@@ -356,7 +360,10 @@ public class PulseControllerImpl implements
     }
 
     private void attachPulseTo(FrameLayout parent) {
-        if (parent == null) return;
+        if (parent == null) {
+            Log.e(TAG, "attachPulseTo() NULL parent ");
+            return;
+        }
         View v = parent.findViewWithTag(PulseView.TAG);
         if (v == null) {
             if (mPulseView.getParent() != null) {
